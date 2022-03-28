@@ -7,6 +7,6 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
-app.use('/play-music', playMusicRouter);
+app.use('/music', playMusicRouter);
 
 export default app;

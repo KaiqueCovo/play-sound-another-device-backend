@@ -1,13 +1,19 @@
-import { Router } from 'express';
+import { Request, Response, Router } from 'express';
 import path from 'path';
-import sound from 'sound-play';
+import playSound from 'play-sound';
+
 const musicsJSON = require('../data/musics.json');
 
 const playMusicRouter = Router();
 
-const musicsPlaying: any[] = []
+interface MusicPlaying {
+  music: string;
+  stop: () => void
+}
 
-playMusicRouter.post('/', async (req, res) => {
+const musicsPlaying: MusicPlaying[] = []
+
+playMusicRouter.post('/play', async (req: Request, res: Response) => {
   const { music } = req.body
   const musicPath = path.join(__dirname, "..", "musics", `${music}.mp3`);
   
@@ -17,12 +23,15 @@ playMusicRouter.post('/', async (req, res) => {
       playing: true,
     })
 
-    musicsPlaying.push(music)
-    console.log(musicsPlaying)
+    const sound = playSound({}).play(musicPath, function(err){
+      if (err && !err.killed) throw err
+    })
 
-    await sound.play(musicPath);
+    musicsPlaying.push({
+      music: musicPath,
+      stop: () => sound.kill()
+    })
   } catch (error) {
-    console.log('error', error)
     res.json({
       name: music,
       playing: false,
@@ -31,7 +40,30 @@ playMusicRouter.post('/', async (req, res) => {
   }
 })
 
-playMusicRouter.get('/musics', async (req, res) => res.json(musicsJSON));
+playMusicRouter.get('/stop', async (req: Request, res: Response) => {
+  const { name } = req.query
+
+  try {
+    musicsPlaying[0].stop()
+
+    return res.json({
+      name,
+      stop: true,
+    })
+
+  } catch (error: any) {
+    return res.json({
+      name,
+      stop: false,
+      error
+    })
+  }
+  
+})
+
+playMusicRouter.get('/list', async (_, res: Response) => {
+  res.json(musicsJSON)
+});
 
 
 export { playMusicRouter }
